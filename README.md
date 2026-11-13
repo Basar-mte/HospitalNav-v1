@@ -1,4 +1,4 @@
-# LMIC-HospitalNav
+# HospitalNav-v1
 
 **An open benchmark and a culture-aware navigation stack for service robots in overcrowded LMIC hospitals**
 
