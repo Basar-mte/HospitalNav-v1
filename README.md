@@ -1,15 +1,17 @@
 # HospitalNav-v1
 
-**An open benchmark and a culture-aware navigation stack for service robots in overcrowded LMIC hospitals**
+**An open benchmark and a culture-aware navigation stack for service robots in overcrowded hospitals**
 
-Public hospitals in low- and middle-income countries (LMICs) run far beyond capacity. Dhaka Medical College Hospital (DMCH) has held about 4,300 patients in 2,600 beds, and Rajshahi Medical College Hospital (RMCH) often holds more than 5,000 patients in 1,200 beds. A service robot in such a hospital must cross packed corridors on time, respect prayer rooms and gender-segregated wards, and never touch anyone.
+Hospitals around the world can run far beyond capacity. Crowding may be routine, where demand persistently exceeds the number of beds, or sudden, during emergencies, disasters and other high-density events. Patients then lie in corridors and on floors, with family attendants beside them. A service robot in such a hospital must cross packed corridors on time, respect prayer rooms and gender-segregated wards, and never touch anyone.
 
 This repository contains everything behind our study of that problem:
 
-* **LMIC-HospitalNav-v1**, an open Gymnasium benchmark based on data from DMCH and RMCH, with two floor plans, up to 74 pedestrians of four kinds, five logistics tasks with deadlines and an Ackermann-steered service robot.
-* **A three-level navigation stack**: a planner that prices cultural zones, a local driver (learned, classical or residual) that handles people, and a swept-path safety filter that vetoes any command whose path would touch someone.
-* **The full training campaign** (96 runs), the trained models, per-episode results, a robustness suite, and a **480-run Gazebo study** with the MentorPi robot model in ROS 2.
-* **Nine feasibility trials on an Ackermann-steering mobile robot** (Hiwonder MentorPi). We had no hospital service robot, so this small robot stood in for one, in an apartment with hospital roles assigned to its rooms.
+* **LMIC-HospitalNav-v1**, an open Gymnasium benchmark informed by reported conditions in severely overcrowded hospitals, with two floor plans, up to 74 pedestrians of four kinds, five logistics tasks with deadlines, and a simulated Ackermann-steered mobile robot (ASMR).
+* **A three-level navigation stack**: a planner that prices cultural zones, a local driver (learned, classical, or residual) that handles people, and a swept-path safety filter that vetoes any command whose path would touch someone.
+* **The full training campaign** (96 runs), the trained models, per-episode results, a robustness suite, and a **480-run Gazebo study** with the simulated ASMR model in ROS 2.
+* **Nine real-world feasibility trials on our laboratory's in-house-built ASMR platform.** We had no hospital service robot, so this small robot stood in for one, in an apartment-like indoor environment with designated rooms such as a nurse station, a prayer room and an emergency room.
+
+The ASMR is a four-wheeled, car-like robotic platform with front-wheel steering and rear-wheel drive. The benchmark and Gazebo study use simulated models of it; the feasibility trials use the physical platform built in our laboratory.
 
 ![The two benchmark tiers](docs/figures/fig_tiers.png)
 
@@ -42,13 +44,13 @@ We call it the **price-and-veto problem**. The robot has four duties: reach the 
 | Config | `configs/dmch_hospital.yaml` | `configs/hospital_v4.yaml` |
 | Layout | Open floor around two crossing corridors, walled male and female wards, corridor beds and floor mattresses | Seven walled rooms off a 4 m corridor, doors 1.7 to 1.8 m wide, a prayer room with two doors |
 | Cultural tension | Gendered wards and attendants along routes | The shortest route for two tasks runs through the prayer room |
-| Link to deployment | Grounded in DMCH and RMCH data | Built from the same layout file as the Gazebo world |
+| Link to deployment | Grounded in reported conditions of severely overcrowded hospitals | Built from the same layout file as the Gazebo world |
 
 Shared by both tiers:
 
 * **Floor:** 40 x 30 m on a 0.1 m grid.
 * **Pedestrians:** 23, 45 or 74 people (staff, patients, family attendants in groups of two to four, wheelchair users) driven by an anisotropic social force model. Pedestrians step aside for the robot and never enter its contact ring, so every contact is caused by the robot.
-* **Robot:** Ackermann chassis (wheelbase 0.20 m, steering within plus or minus 30 degrees, speed from -0.3 to 0.8 m/s). It cannot turn on the spot.
+* **Robot:** simulated ASMR, an Ackermann chassis (wheelbase 0.20 m, steering within plus or minus 30 degrees, speed from -0.3 to 0.8 m/s). It cannot turn on the spot.
 * **Observation:** 90 values (48-ray 360 degree LiDAR, robot state, the five nearest people, goal or planner waypoint, and a 14-value context).
 * **Tasks:** STAT medicine, nurse call, specimen, restock and idle return, each with an urgency and a deadline.
 * **Metrics:** success rate (SR), collision and timeout shares, cultural violation rate (CVR), CVR on the STAT task (CVR_STAT), social violation rate (SVR), time to goal.
@@ -105,7 +107,7 @@ What the results show:
 * **Learned and classical control are complementary.** The tuned social-force driver beats every pure learned driver in the benchmark, and the residual policy on top of it is the strongest driver measured.
 * **The approach has a clear boundary.** A crowd that does not give way costs every driver 30 to 40 points, with or without the filter.
 
-**Gazebo study** (gz-sim Harmonic, ROS 2 Jazzy, real MentorPi URDF, LiDAR people tracker, 2 wards x 8 or 45 walkers x 6 drivers x stall recovery on or off x 10 pedestrian seeds):
+**Gazebo study** (gz-sim Harmonic, ROS 2 Jazzy, URDF model of the simulated ASMR, LiDAR people tracker, 2 wards x 8 or 45 walkers x 6 drivers x stall recovery on or off x 10 pedestrian seeds):
 
 ![Gazebo goal-reached rates](docs/figures/fig_gzsuccess.png)
 
@@ -115,7 +117,7 @@ What the results show:
 
 ![Prayer-room crossing in Gazebo](docs/figures/fig_gzprayer.png)
 
-**Feasibility trials on a mobile robot.** We had no hospital service robot, so a Hiwonder MentorPi, an Ackermann-steering mobile robot, stood in for one. The simulation-trained residual policy ran with unchanged weights in an apartment with hospital roles assigned to its rooms, from a nurse station to an emergency-room goal (10.53 m route, 0.45 m/s cap, 2 to 11 walking people).
+**Real-world feasibility trials on the in-house-built ASMR.** We had no hospital service robot, so our laboratory's in-house-built ASMR platform stood in for one. The simulation-trained residual policy ran with unchanged weights in an apartment-like indoor environment with designated rooms, from a nurse station to an emergency-room goal (10.53 m route, 0.45 m/s cap, 2 to 11 walking people).
 
 * The robot reached the goal in 8 of 9 single trials, 6 of them without help.
 * Five components the benchmark does not contain were added one at a time, each after an observed failure. With all five in place, the robot arrived unaided in each of its 3 trials.
@@ -179,7 +181,7 @@ See [`ros_sim/README.md`](ros_sim/README.md). It covers the ROS 2 Humble (Gazebo
 * `experiments/planner/results/`: the evaluation-only screen that fixed the planner settings.
 * `ros_sim/paper_data/`: all numbers of the Gazebo study as CSV (one row per run, per-configuration statistics, the robot's 10 Hz logs, routes, seeds, crowd statistics, scan-invariance checks, model parameters). See `ros_sim/paper_data/DATA_README.md`.
 * `ros_sim/results_summary/`: the Gazebo campaign and repeated-campaign reports.
-* `real_robot/`: the nine feasibility trials on the mobile robot, one row per trial and the 5 Hz run logs. See `real_robot/README.md`.
+* `real_robot/`: the nine real-world feasibility trials on the in-house-built ASMR, one row per trial and the 5 Hz run logs. See `real_robot/README.md`.
 
 Not included because of size: the checkpoints and replay buffers of all 96 training runs, the per-run pedestrian logs of the Gazebo study (0.6 GB), the raw Gazebo run folders, renders and videos (about 5 GB). They are available from the authors on request.
 
@@ -197,8 +199,8 @@ experiments/             earlier and side experiments (stability pilots, TD3, PP
 scripts/                 campaign orchestration, classical evaluation, paper tables and audits
 runs_v5/results/         aggregated results of the final campaign
 ros_sim/                 ROS 2 package, Gazebo plugins and worlds, trained models, Gazebo data
-real_robot/              logs of the nine feasibility trials on the MentorPi mobile robot
-deploy/                  MentorPi deployment guide, older ROS 2 stack, Isaac Sim tools
+real_robot/              logs of the nine feasibility trials on the in-house-built ASMR
+deploy/                  ASMR deployment guide, older ROS 2 stack, Isaac Sim tools
 stakeholder_validation/  questionnaire for hospital stakeholders
 docs/                    stakeholder protocol, simulation changelog, README figures
 tests/                   environment smoke tests
@@ -207,7 +209,7 @@ tests/                   environment smoke tests
 ## Limitations
 
 * All benchmark evaluations use the medium crowd of 45 people, one floor plan per tier, and pedestrians that give way to the robot.
-* The physical trials used a small Ackermann-steering mobile robot in an apartment, not a hospital service robot in a ward. Testing a hospital-grade service robot in DMCH and RMCH wards needs written permission from the hospital authorities, ethics approval, a stakeholder survey and funding.
+* The physical trials used our small in-house-built ASMR in an apartment-like environment, not a hospital service robot in a ward. Testing a hospital-grade service robot in real hospital wards needs written permission from the hospital authorities, ethics approval, a stakeholder survey and funding.
 * The planner settings, `kappa = 3` included, were fixed on pilot policies with the protocol episode seeds.
 * The swept-path filter is tested, not proven.
 * The Gazebo study uses ground-truth localisation on a prebuilt map and one route, and the stall recovery is an intervention the benchmark does not have.
@@ -215,9 +217,9 @@ tests/                   environment smoke tests
 
 ## Cultural rules and stakeholder validation
 
-The cultural rules (a prayer room most sensitive at the five daily prayer times, separate male and female wards, family attendants at the bedside) describe common practice in Bangladeshi public hospitals. We wrote them ourselves, and stakeholders have not yet validated them. We model separate wards as the hospitals run them today and take no position on the practice. All rules sit in one price table and one prayer timetable, so a hospital can inspect and change them without retraining.
+The cultural rules (a prayer room most sensitive at the five daily prayer times, separate male and female wards, family attendants at the bedside) are representative examples of context-dependent norms that a hospital may need a robot to respect. We wrote them ourselves, and stakeholders have not yet validated them. We model separate wards as such hospitals run them and take no position on the practice. All rules sit in one price table and one prayer timetable, so a hospital can inspect and change them, or replace them with its own norms, without retraining.
 
-The next step is to deploy the stack on the physical MentorPi robot in DMCH and RMCH wards, guided by the opinions of nurses and ward staff, doctors, administrators, imams and prayer-space caretakers, family attendants and patients, after ethics approval. A short questionnaire is ready in `stakeholder_validation/google_form.gs`, and the full protocol is in `docs/stakeholder_validation.md`.
+The next step is to deploy the stack on the in-house-built ASMR in real hospital wards, guided by the opinions of nurses and ward staff, doctors, administrators, imams and prayer-space caretakers, family attendants and patients, after ethics approval. A short questionnaire is ready in `stakeholder_validation/google_form.gs`, and the full protocol is in `docs/stakeholder_validation.md`.
 
 ## Citation, license and third-party assets
 
@@ -228,6 +230,6 @@ The code is released under the [MIT License](LICENSE).
 Third-party assets:
 
 * The hospital furniture and people models in `ros_sim/hospitalnav_deploy/meshes/fuel/` come from the Open Robotics collection on Gazebo Fuel. See `ATTRIBUTION.md` in that folder.
-* The Hiwonder MentorPi CAD meshes are **not** included. To use the real robot model (`urdf/mentorpi_real.urdf`) or the Isaac Sim robot, copy the vendor meshes into the `meshes/acker/` folders as explained in the `README.md` files there. The simplified robot model `urdf/hospitalnav_robot.urdf` needs no extra files.
+* The vendor CAD meshes used by the detailed robot model (`urdf/mentorpi_real.urdf`) and the Isaac Sim robot are **not** included. To use them, copy the meshes into the `meshes/acker/` folders as explained in the `README.md` files there. The simplified ASMR model `urdf/hospitalnav_robot.urdf` needs no extra files.
 
 Contact: Md. Abul Basar Roky, Department of Mechatronics Engineering, Rajshahi University of Engineering & Technology, Bangladesh (m.a.basar.mte@gmail.com).
