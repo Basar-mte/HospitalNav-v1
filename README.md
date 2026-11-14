@@ -6,7 +6,7 @@ Hospitals around the world can run far beyond capacity. Crowding may be routine,
 
 This repository contains everything behind our study of that problem:
 
-* **LMIC-HospitalNav-v1**, an open Gymnasium benchmark informed by reported conditions in severely overcrowded hospitals, with two floor plans, up to 74 pedestrians of four kinds, five logistics tasks with deadlines, and a simulated Ackermann-steered mobile robot (ASMR).
+* **HospitalNav-v1**, an open Gymnasium benchmark informed by reported conditions in severely overcrowded hospitals, with two floor plans, up to 74 pedestrians of four kinds, five logistics tasks with deadlines, and a simulated Ackermann-steered mobile robot (ASMR).
 * **A three-level navigation stack**: a planner that prices cultural zones, a local driver (learned, classical, or residual) that handles people, and a swept-path safety filter that vetoes any command whose path would touch someone.
 * **The full training campaign** (96 runs), the trained models, per-episode results, a robustness suite, and a **480-run Gazebo study** with the simulated ASMR model in ROS 2.
 * **Nine real-world feasibility trials on our laboratory's in-house-built ASMR platform.** We had no hospital service robot, so this small robot stood in for one, in an apartment-like indoor environment with designated rooms such as a nurse station, a prayer room and an emergency room.
@@ -51,8 +51,8 @@ Shared by both tiers:
 * **Floor:** 40 x 30 m on a 0.1 m grid.
 * **Pedestrians:** 23, 45 or 74 people (staff, patients, family attendants in groups of two to four, wheelchair users) driven by an anisotropic social force model. Pedestrians step aside for the robot and never enter its contact ring, so every contact is caused by the robot.
 * **Robot:** simulated ASMR, an Ackermann chassis (wheelbase 0.20 m, steering within plus or minus 30 degrees, speed from -0.3 to 0.8 m/s). It cannot turn on the spot.
-* **Observation:** 90 values (48-ray 360 degree LiDAR, robot state, the five nearest people, goal or planner waypoint, and a 14-value context).
-* **Tasks:** STAT medicine, nurse call, specimen, restock and idle return, each with an urgency and a deadline.
+* **Observation:** 90 values (48-ray 360-degree LiDAR, robot state, the five nearest people, goal or planner waypoint, and a 14-value context).
+* **Tasks:** STAT medicine, nurse call, specimen, restock, and idle return, each with an urgency and a deadline.
 * **Metrics:** success rate (SR), collision and timeout shares, cultural violation rate (CVR), CVR on the STAT task (CVR_STAT), social violation rate (SVR), time to goal.
 * **Clock:** a ward clock with five daily prayer windows, so a prayer time can start or end during a trip.
 
@@ -61,8 +61,8 @@ Shared by both tiers:
 ![The navigation stack](docs/figures/fig_stack.png)
 
 * **Planner.** Dijkstra cost-to-go on the robot-inflated grid. A metre in a zone costs `1 + kappa * lambda(x, h)` corridor metres, where `lambda` is the cultural charge of the reward, converted to metres of progress (0.83 in the prayer room during prayer, 0.25 at other hours, 0.042 in a gendered ward). We use `kappa = 3`. The planner hands the driver a waypoint up to 2.5 m ahead and the remaining route length. Code: `experiments/planner/planner.py`, `experiments/planner/patch.py`.
-* **Local drivers.** SAC, TD3 and PPO trained with the CARS reward (Culture-Aware Reward Shaping), classical controllers (stock and tuned social force, ORCA, pure pursuit, A*), and a **residual** SAC policy that corrects the tuned social-force driver: `a = clip(a_SF + 0.5 * a_pi)`. Code: `train/`, `rewards/`, `scripts/eval_classical_v5.py`, `experiments/planner/residual.py`, `experiments/planner/orca.py`.
-* **Swept-path filter.** For the commanded steering angle it computes how far the robot body can travel along its arc before it meets a LiDAR return or a person moved up to 0.6 s ahead, then caps the speed so the robot stops in time. If the arc is blocked it tries nearby steering angles. It never raises speed. It has no formal guarantee. We test it and break its assumptions on purpose. Code: `experiments/planner/arc_shield.py`. The older forward-cone filter is in `baselines/safety_shield.py`.
+* **Local drivers.** SAC, TD3, and PPO trained with the CARS reward (Culture-Aware Reward Shaping), classical controllers (stock and tuned social force, ORCA, pure pursuit, A*), and a **residual** SAC policy that corrects the tuned social-force driver: `a = clip(a_SF + 0.5 * a_pi)`. Code: `train/`, `rewards/`, `scripts/eval_classical_v5.py`, `experiments/planner/residual.py`, `experiments/planner/orca.py`.
+* **Swept-path filter.** For the commanded steering angle, it computes how far the robot body can travel along its arc before it meets a LiDAR return or a person moved up to 0.6 s ahead, then caps the speed so the robot stops in time. If the arc is blocked, it tries nearby steering angles. It never raises speed. It has no formal guarantee. We test it and break its assumptions on purpose. Code: `experiments/planner/arc_shield.py`. The older forward-cone filter is in `baselines/safety_shield.py`.
 
 ## Main results
 
@@ -135,7 +135,7 @@ source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-The campaign was run with Python 3.12, PyTorch 2.11, Stable-Baselines3 2.9 and Gymnasium 1.3.
+The campaign was run with Python 3.12, PyTorch 2.11, Stable-Baselines3 2.9, and Gymnasium 1.3.
 
 ### Check the environment
 
@@ -146,7 +146,7 @@ python scripts/play.py --density medium     # drive the robot with the arrow key
 
 ### Train one agent with the paper's recipe
 
-The final recipe turns reward normalisation off, uses a replay buffer of one million, a learning rate of 1e-4 and one environment per run. The planner is switched on with environment variables.
+The final recipe turns reward normalisation off, uses a replay buffer of one million, a learning rate of 1e-4, and one environment per run. The planner is switched on with environment variables.
 
 ```bash
 export PILOT_NORM_REWARD=0
@@ -168,7 +168,7 @@ python scripts/audit_paper_numbers.py    # checks the headline numbers against r
 
 ### Run the stack in Gazebo and ROS 2
 
-See [`ros_sim/README.md`](ros_sim/README.md). It covers the ROS 2 Humble (Gazebo classic) quick start, the gz-sim Harmonic and ROS 2 Jazzy setup used for the paper, every launch argument, the worlds, the pedestrian plugin and how to repeat the 480-run campaign.
+See [`ros_sim/README.md`](ros_sim/README.md). It covers the ROS 2 Humble (Gazebo Classic) quick start, the gz-sim Harmonic and ROS 2 Jazzy setup used for the paper, every launch argument, the worlds, the pedestrian plugin, and how to repeat the 480-run campaign.
 
 ## Trained models
 
