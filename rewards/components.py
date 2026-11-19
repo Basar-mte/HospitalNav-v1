@@ -54,7 +54,7 @@ def navigation_reward(
 
     PROGRESS_SCALE: raw per-step progress is at most v_max·Δt = 0.08 m —
     an order of magnitude below the ambient safety/cultural proximity
-    penalties accrued while crossing an LMIC-density ward (measured: with
+    penalties accrued while crossing a crowded ward (measured: with
     unscaled progress the return of a completed 20 m task was NET NEGATIVE
     versus idling in an empty corner, and success rate stayed exactly 0).
     Scaling progress so a full-speed approach step ≈ +0.8 makes purposeful

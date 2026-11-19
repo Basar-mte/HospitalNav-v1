@@ -18,31 +18,24 @@ env/
 .DS_Store
 Thumbs.db
 
-# Training outputs: keep only the aggregated results of the final campaign
+# Your own training runs (the paper's records are in results/ and are tracked)
 runs/
-runs_v4/
-runs_v5/**
-!runs_v5/**/
-!runs_v5/results/**
-!runs_v5/*/*/eval_*.json
-runs_v5_*/
-experiments/*/runs*/
-experiments/planner/results/logs/
+runs_*/
+ablations/planner_screen/results/logs/
 *_train.log
 *.log.err
 
-# Gazebo run folders, renders and videos produced by ros_sim/sim/
-ros_sim/results_runs*/
-ros_sim/results_superseded/
-ros_sim/results_figures/
-ros_sim/paper_figures/
-ros_sim/paper_data/pedestrians/
+# Generated tables and figures (python paper/build_paper_tables.py)
+paper/output/
+
+# Gazebo run folders, renders and videos produced by ros2/sim/
+ros2/results_runs*/
+ros2/results_superseded/
+ros2/results_figures/
+ros2/paper_figures/
+ros2/paper_data/pedestrians/
 *.mp4
 
-# Generated paper tables (python scripts/build_paper_tables.py)
-paper_tables/
-manuscript/
-
-# Vendor CAD meshes (not redistributable, see meshes/acker/README.md)
+# Vendor CAD meshes (not redistributable, see ros2/hospitalnav_deploy/meshes/acker/README.md)
 **/meshes/acker/*.STL
 **/meshes/acker/*.stl

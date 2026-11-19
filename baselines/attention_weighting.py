@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from rewards.reinforce_mixin import AdaptiveWeightReinforceMixin, REINFORCE_LR
 
 
-CONTEXT_DIM = 14  # matches envs.lmic_hospital_env._context_vec
+CONTEXT_DIM = 14  # matches envs.hospital_env._context_vec
 N_HEADS      = 4   # nav, safety, cultural, task
 KEY_DIM      = 16
 

@@ -13,7 +13,7 @@ The temperature τ is a learnable parameter (initialised to 1.0) that controls
 the peakedness of the weight distribution. Low τ → near-uniform weights;
 high τ → winner-takes-all.
 
-Context vector (14 dims, matches lmic_hospital_env.py _context_vec)
+Context vector (14 dims, matches hospital_env.py _context_vec)
 --------------------------------------------------------------------
 [0]    density_5m         ∈ [0, 1]   (# pedestrians within 5 m / 30)
 [1]    task_urgency       ∈ [0, 1]
@@ -58,7 +58,7 @@ import torch.nn.functional as F
 from rewards.reinforce_mixin import AdaptiveWeightReinforceMixin, REINFORCE_LR
 
 
-CONTEXT_DIM = 14  # matches envs.lmic_hospital_env._context_vec (v3: +density2m, +cultural-zone distance)
+CONTEXT_DIM = 14  # matches envs.hospital_env._context_vec (v3: +density2m, +cultural-zone distance)
 N_WEIGHTS    = 4        # [nav, safety, cultural, task]
 HIDDEN_DIM   = 32
 
@@ -171,12 +171,12 @@ class CARSRewardShaper:
     Combines CWN weight prediction with CARS reward components.
 
     This class is the "plug" inserted into the Gymnasium environment via the
-    `reward_fn` and `weight_source` hooks (lmic_hospital_env.py).
+    `reward_fn` and `weight_source` hooks (hospital_env.py).
 
     Usage
     -----
     shaper = CARSRewardShaper(cwn=CWN())
-    # In env.__init__: env = LMICHospitalNavEnv(reward_fn=shaper, weight_source=shaper.cwn.get_weights)
+    # In env.__init__: env = HospitalNavEnv(reward_fn=shaper, weight_source=shaper.cwn.get_weights)
     shaper(obs, next_obs, action, info)  → float reward
     """
 

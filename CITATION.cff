@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use this benchmark or navigation stack, please cite it as below."
-title: "LMIC-HospitalNav: An Open Benchmark and a Culture-Aware Navigation Stack for Service Robots in Overcrowded LMIC Hospitals"
+message: "If you use this benchmark or the navigation stack, please cite the paper below."
+title: "HospitalNav-v1: a benchmark and a culture-aware navigation stack for service robots in crowded hospitals"
 authors:
   - family-names: "Roky"
     given-names: "Md. Abul Basar"
@@ -8,37 +8,31 @@ authors:
     email: "m.a.basar.mte@gmail.com"
 type: software
 license: MIT
-repository-code: "https://github.com/Basar-mte/RL-on-Medical-Service-Robot-for-LMIC-Environment"
-version: "1.1.0"
-date-released: "2026-11-02"
+repository-code: "https://github.com/Basar-mte/HospitalNav-v1"
+version: "2.0.0"
+date-released: "2026-11-19"
 keywords:
   - social robot navigation
+  - crowd navigation
   - reinforcement learning benchmark
   - healthcare robotics
   - safety filter
   - cultural norms
-  - LMIC hospitals
 preferred-citation:
   type: article
-  title: "Culture-Aware Service Robot Navigation in Overcrowded Hospitals: A Benchmark and a Price-and-Veto Framework"
+  title: "A Hierarchical Price-and-Veto Framework for Culture-Aware Autonomous Navigation of Service Robots in Crowded Hospitals: Benchmarking and Experimental Validation"
   year: 2026
-  notes: "Manuscript under review."
+  notes: "Preprint."
   authors:
     - family-names: "Roky"
       given-names: "Md. Abul Basar"
-      affiliation: "Department of Mechatronics Engineering, Rajshahi University of Engineering & Technology, Bangladesh"
     - family-names: "Rahman"
       given-names: "Md. Musfiqur"
-      affiliation: "Department of Mechatronics Engineering, Rajshahi University of Engineering & Technology, Bangladesh"
     - family-names: "Sardar"
       given-names: "Md. Asif"
-      affiliation: "Department of Mechanical Engineering, Rajshahi University of Engineering & Technology, Bangladesh"
-    - family-names: "Sifa"
-      given-names: "Most. Sadia"
-      affiliation: "Rajshahi Medical College, Bangladesh"
-    - family-names: "Bappy"
-      given-names: "Ohidur Rahman"
-      affiliation: "Gopalganj Science and Technology University, Bangladesh"
     - family-names: "Sarker"
-      given-names: "Subrata Kumar"
-      affiliation: "Department of Mechatronics Engineering, Rajshahi University of Engineering & Technology, Bangladesh"
+      given-names: "Subrata K."
+    - family-names: "Yan"
+      given-names: "Bing"
+    - family-names: "Das"
+      given-names: "Sajal K."

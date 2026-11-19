@@ -1,5 +1,5 @@
 """
-Floor plan loader for LMIC-HospitalNav-v1.
+Floor plan loader for HospitalNav-v1.
 
 Loads a parametric hospital floor plan from YAML, rasterizes it to a 2-D
 occupancy grid and a zone map, and provides spatial helpers used by the
@@ -151,7 +151,7 @@ class FloorPlan:
         return bool(self.occupancy[r, c] == 0)
 
     # Robot body radius used for the inflated grid (matches
-    # envs.lmic_hospital_env.ROBOT_RADIUS; duplicated here to avoid a
+    # envs.hospital_env.ROBOT_RADIUS; duplicated here to avoid a
     # circular import — validated equal by tests/test_env.py).
     ROBOT_RADIUS_M = 0.25
 

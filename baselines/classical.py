@@ -1,5 +1,5 @@
 """
-Classical baselines for LMICHospitalNav-v1 comparison.
+Classical baselines for HospitalNav-v1 comparison.
 
 B1 — Static A* (no RL, pure path following)
 B2 — Social Force navigation (HSFM-guided, no learning)
@@ -9,7 +9,7 @@ All implement the same reward_fn signature:
   fn(obs, next_obs, action, info) -> float
 
 AStarController/SocialForceController output Ackermann [v, steering_angle]
-actions (matching envs.lmic_hospital_env's action space), converted from an
+actions (matching envs.hospital_env's action space), converted from an
 internal desired-yaw-rate planning quantity via _omega_to_steer().
 """
 
@@ -18,7 +18,7 @@ import math
 import numpy as np
 from typing import Optional
 
-from envs.lmic_hospital_env import (
+from envs.hospital_env import (
     LIDAR_FOV, N_LIDAR_RAYS, LIDAR_MAX, WHEELBASE, MAX_STEER,
     PED_NEIGHBOR_RADIUS, lidar_ray_angles,
 )
@@ -225,7 +225,7 @@ class SocialForceController:
 
         # Pedestrian repulsion — de-normalise dx,dy by the same
         # PED_NEIGHBOR_RADIUS used to normalise obs["pedestrians"]
-        # (envs.lmic_hospital_env._ped_obs_vec), not a separate hardcoded value.
+        # (envs.hospital_env._ped_obs_vec), not a separate hardcoded value.
         rep_force = np.zeros(2)
         for k in range(ped_neighbors.shape[0]):
             dx = float(ped_neighbors[k, 0]) * PED_NEIGHBOR_RADIUS
@@ -234,7 +234,7 @@ class SocialForceController:
             rep_force += self.A_rep * np.exp(-dist / self.B_rep) * np.array([-dx, -dy]) / dist
 
         # Wall repulsion from LiDAR — ray angles/range imported from
-        # envs.lmic_hospital_env so this can never silently diverge from the
+        # envs.hospital_env so this can never silently diverge from the
         # env's own 360 deg / N_LIDAR_RAYS / LIDAR_MAX geometry.
         angles = lidar_ray_angles(LIDAR_FOV, N_LIDAR_RAYS)
         wall_force = np.zeros(2)

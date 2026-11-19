@@ -1,12 +1,14 @@
-gymnasium>=1.0
-numpy
-pandas
+# Python 3.10 or newer (the paper used Python 3.12). Versions in the comments are the ones
+# the paper's campaign ran with; the full list is in results/provenance/pip_freeze.txt.
+gymnasium>=1.0            # 1.3.0
+stable-baselines3>=2.3    # 2.9.0
+torch                     # 2.11.0 (a CPU build is enough)
+numpy                     # 2.5.1
 pyyaml
-torch
-stable-baselines3>=2.3
-tensorboard
 matplotlib
+tensorboard
+pandas
 imageio
 Pillow
-pygame
-pytest
+pygame                    # only for tools/play.py (drive the robot with the keyboard)
+pytest                    # only for the tests in tests/

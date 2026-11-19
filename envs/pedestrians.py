@@ -9,11 +9,11 @@ Farina, F., Fontanelli, D., Garulli, A., Giannitrapani, A., & Prattichizzo, D. (
     Walking Ahead: The Headed Social Force Model. PLOS ONE, 12(1), e0169734.
     doi:10.1371/journal.pone.0169734
 
-Pedestrian classes (LMIC-specific)
-------------------------------------
+Pedestrian classes
+------------------
 medical_staff   : 1.2–1.4 m/s, purposeful, small personal space
 patient         : 0.5–0.8 m/s, slow + random direction noise
-family_attendant: 0.4–0.7 m/s, moves in groups of 2–4 (LMIC-specific),
+family_attendant: 0.4–0.7 m/s, moves in groups of 2–4,
                   loiters near bed areas and corridors
 wheelchair      : 0.6–0.9 m/s, wider footprint, slower turns
 """
@@ -55,7 +55,7 @@ PCLASS_PARAMS: Dict[str, dict] = {
         tau=0.6,
         radius=0.25,
         direction_noise=0.1,
-        group_size=(2, 4),     # LMIC-specific: loiters in groups
+        group_size=(2, 4),     # family attendants loiter in groups
         cohesion_force=3.0,    # N
         cohesion_radius=1.8,   # m
     ),
@@ -84,7 +84,7 @@ PCLASS_PARAMS: Dict[str, dict] = {
 A_REPULSE = 60.0   # pedestrian-pedestrian repulsion amplitude (N)
 B_REPULSE = 0.25   # decay length (m), measured from surface separation
 K_BODY    = 600.0  # contact spring (N per metre of body overlap)
-ROBOT_BODY_RADIUS = 0.25  # matches envs.lmic_hospital_env.ROBOT_RADIUS
+ROBOT_BODY_RADIUS = 0.25  # matches envs.hospital_env.ROBOT_RADIUS
 # Robot term: stronger and longer-ranged than ped-ped — any contact with the
 # robot terminates the episode, so pedestrians must start yielding while
 # still ~1m away (humans also give mobile robots a wider berth than they

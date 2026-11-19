@@ -19,7 +19,7 @@ nearby pedestrians. The reward shaping term is:
 This is added to a standard goal-directed navigation reward. There is no
 cultural term, making it a strong baseline for C2 comparison.
 
-We implement this as a drop-in reward_fn for LMICHospitalNavEnv.
+We implement this as a drop-in reward_fn for HospitalNavEnv.
 """
 
 from __future__ import annotations

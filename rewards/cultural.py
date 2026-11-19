@@ -7,7 +7,7 @@ Formalises three culturally-grounded spatial constraints as learnable reward ter
                                  especially during prayer time windows.
   2. Gender-zone navigation    – robot should minimise time in gender-segregated
                                  wards; when entry is unavoidable, move efficiently.
-  3. Attendant-aware proxemics – LMIC family attendants form tight groups;
+  3. Attendant-aware proxemics – family attendants form tight groups;
                                  robot must respect cluster boundaries.
 
 All three terms produce scalar rewards in [-2.0, 0.0] so they compose cleanly
@@ -109,7 +109,7 @@ def attendant_proxemics_reward(
     """
     Penalise robot intrusion into family-attendant cluster space.
 
-    LMIC context: family members camp beside patients in tight groups.
+    In crowded wards, family members stay beside patients in tight groups.
     The cluster boundary is larger than standard personal space.
 
     Returns (reward, violation_flag).

@@ -41,7 +41,7 @@ from typing import Optional
 import numpy as np
 import torch
 
-CONTEXT_DIM = 14  # matches envs.lmic_hospital_env._context_vec
+CONTEXT_DIM = 14  # matches envs.hospital_env._context_vec
 N_WEIGHTS = 4
 
 # Matches the training-mechanism design: 50k-step hard warm start at equal

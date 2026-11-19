@@ -1,235 +1,186 @@
 # HospitalNav-v1
 
-**An open benchmark and a culture-aware navigation stack for service robots in overcrowded hospitals**
+**A benchmark and a navigation stack for service robots in crowded hospitals.**
 
-Hospitals around the world can run far beyond capacity. Crowding may be routine, where demand persistently exceeds the number of beds, or sudden, during emergencies, disasters and other high-density events. Patients then lie in corridors and on floors, with family attendants beside them. A service robot in such a hospital must cross packed corridors on time, respect prayer rooms and gender-segregated wards, and never touch anyone.
+Hospitals can get very crowded. Sometimes this is normal, when there are more patients than
+beds. Sometimes it is sudden, during an emergency or a disaster. Patients then lie in
+corridors and on the floor, family members stay beside them, and staff hurry through. A
+service robot that carries medicine or samples in such a hospital must arrive on time, never
+touch anyone, and respect places such as a prayer room or a ward for women only.
 
-This repository contains everything behind our study of that problem:
+This repository has everything we used to study this problem, so that you can repeat it,
+check it, or build on it:
 
-* **HospitalNav-v1**, an open Gymnasium benchmark informed by reported conditions in severely overcrowded hospitals, with two floor plans, up to 74 pedestrians of four kinds, five logistics tasks with deadlines, and a simulated Ackermann-steered mobile robot (ASMR).
-* **A three-level navigation stack**: a planner that prices cultural zones, a local driver (learned, classical, or residual) that handles people, and a swept-path safety filter that vetoes any command whose path would touch someone.
-* **The full training campaign** (96 runs), the trained models, per-episode results, a robustness suite, and a **480-run Gazebo study** with the simulated ASMR model in ROS 2.
-* **Nine real-world feasibility trials on our laboratory's in-house-built ASMR platform.** We had no hospital service robot, so this small robot stood in for one, in an apartment-like indoor environment with designated rooms such as a nurse station, a prayer room and an emergency room.
+* **The benchmark (HospitalNav-v1).** A [Gymnasium](https://gymnasium.farama.org/) environment
+  with two hospital floors, up to 74 people of four kinds, five delivery tasks with deadlines,
+  and a small car-like robot (an Ackermann-steered mobile robot, ASMR).
+* **The navigation stack.** Three parts that work together. A *route planner* puts a price on
+  culturally sensitive places. A *driver* (learned, classical, or both) moves through the
+  crowd. A *safety filter* stops any command whose path would touch a person.
+* **Everything behind the paper.** Training code, the 96 training runs and their per-episode
+  results, ablations, robustness tests, trained models, a ROS 2 package with a Gazebo study
+  (480 runs), and logs of nine trials on a real robot.
 
-The ASMR is a four-wheeled, car-like robotic platform with front-wheel steering and rear-wheel drive. The benchmark and Gazebo study use simulated models of it; the feasibility trials use the physical platform built in our laboratory.
-
-![The two benchmark tiers](docs/figures/fig_tiers.png)
-
----
-
-## Contents
-
-1. [The problem in one paragraph](#the-problem-in-one-paragraph)
-2. [The benchmark](#the-benchmark)
-3. [The navigation stack](#the-navigation-stack)
-4. [Main results](#main-results)
-5. [Quick start](#quick-start)
-6. [Trained models](#trained-models)
-7. [Data in this repository](#data-in-this-repository)
-8. [Repository layout](#repository-layout)
-9. [Limitations](#limitations)
-10. [Cultural rules and stakeholder validation](#cultural-rules-and-stakeholder-validation)
-11. [Citation, license and third-party assets](#citation-license-and-third-party-assets)
+![The two hospital floors of the benchmark](docs/figures/fig_tiers.png)
 
 ---
 
-## The problem in one paragraph
+## Results at a glance
 
-We call it the **price-and-veto problem**. The robot has four duties: reach the goal in time, respect cultural zones, keep a polite distance from people, and never touch anyone. We sort each duty by two questions. *When does the robot know what the duty depends on?* The floor plan, the zones and the prayer timetable are known before the robot moves, but people are only seen through its sensors. *May the duty be traded against progress?* Cultural norms must be tradeable, because two of the five tasks end inside a gendered ward, so a ban would make them impossible. Each norm therefore gets a **posted price** per metre that a hospital can read and change. Contact cannot be traded, so it gets a **veto**. The answers decide which level of the stack handles each duty.
+All numbers are on Tier 2 (the walled ward) with 45 people, 500 test episodes per training
+run. SR = success rate.
 
-## The benchmark
+| What we tested | Result |
+|---|---|
+| Route planner on or off (SAC-CARS driver) | SR rises from 48.2 % to 80.4 % |
+| Swept-path safety filter | No contact in 42,500 episodes of planner-guided drivers; 4 contacts in all 54,000 filtered episodes |
+| Best driver (residual learning on top of a tuned social-force controller, with the filter) | SR 99.4 % |
+| Cultural route planner instead of the shortest path | Cultural violation rate on the urgent (STAT) task falls from 0.080 to 0.002, with the same SR |
+| Gazebo physics simulation (480 runs) | Robot went more than 1 m into the prayer room in 62 of 62 successful culture-blind runs, but in only 4 of 118 successful culture-aware runs |
+| Real robot (9 trials, apartment set up as a small hospital) | Goal reached in 8 of 9 trials, 6 of them with no help |
+| Crowd that does not step aside for the robot | Every driver loses 30 to 40 points of SR, with or without the filter |
 
-| | Tier 1: open ward floor | Tier 2: walled ward |
-|---|---|---|
-| Config | `configs/dmch_hospital.yaml` | `configs/hospital_v4.yaml` |
-| Layout | Open floor around two crossing corridors, walled male and female wards, corridor beds and floor mattresses | Seven walled rooms off a 4 m corridor, doors 1.7 to 1.8 m wide, a prayer room with two doors |
-| Cultural tension | Gendered wards and attendants along routes | The shortest route for two tasks runs through the prayer room |
-| Link to deployment | Grounded in reported conditions of severely overcrowded hospitals | Built from the same layout file as the Gazebo world |
+The full tables are in [docs/07_reproduce_the_paper.md](docs/07_reproduce_the_paper.md).
 
-Shared by both tiers:
+---
 
-* **Floor:** 40 x 30 m on a 0.1 m grid.
-* **Pedestrians:** 23, 45 or 74 people (staff, patients, family attendants in groups of two to four, wheelchair users) driven by an anisotropic social force model. Pedestrians step aside for the robot and never enter its contact ring, so every contact is caused by the robot.
-* **Robot:** simulated ASMR, an Ackermann chassis (wheelbase 0.20 m, steering within plus or minus 30 degrees, speed from -0.3 to 0.8 m/s). It cannot turn on the spot.
-* **Observation:** 90 values (48-ray 360-degree LiDAR, robot state, the five nearest people, goal or planner waypoint, and a 14-value context).
-* **Tasks:** STAT medicine, nurse call, specimen, restock, and idle return, each with an urgency and a deadline.
-* **Metrics:** success rate (SR), collision and timeout shares, cultural violation rate (CVR), CVR on the STAT task (CVR_STAT), social violation rate (SVR), time to goal.
-* **Clock:** a ward clock with five daily prayer windows, so a prayer time can start or end during a trip.
+## Quick start (about 10 minutes)
 
-## The navigation stack
-
-![The navigation stack](docs/figures/fig_stack.png)
-
-* **Planner.** Dijkstra cost-to-go on the robot-inflated grid. A metre in a zone costs `1 + kappa * lambda(x, h)` corridor metres, where `lambda` is the cultural charge of the reward, converted to metres of progress (0.83 in the prayer room during prayer, 0.25 at other hours, 0.042 in a gendered ward). We use `kappa = 3`. The planner hands the driver a waypoint up to 2.5 m ahead and the remaining route length. Code: `experiments/planner/planner.py`, `experiments/planner/patch.py`.
-* **Local drivers.** SAC, TD3, and PPO trained with the CARS reward (Culture-Aware Reward Shaping), classical controllers (stock and tuned social force, ORCA, pure pursuit, A*), and a **residual** SAC policy that corrects the tuned social-force driver: `a = clip(a_SF + 0.5 * a_pi)`. Code: `train/`, `rewards/`, `scripts/eval_classical_v5.py`, `experiments/planner/residual.py`, `experiments/planner/orca.py`.
-* **Swept-path filter.** For the commanded steering angle, it computes how far the robot body can travel along its arc before it meets a LiDAR return or a person moved up to 0.6 s ahead, then caps the speed so the robot stops in time. If the arc is blocked, it tries nearby steering angles. It never raises speed. It has no formal guarantee. We test it and break its assumptions on purpose. Code: `experiments/planner/arc_shield.py`. The older forward-cone filter is in `baselines/safety_shield.py`.
-
-## Main results
-
-All benchmark numbers come from the final campaign `runs_v5`: 96 runs of 2 million steps, 5 seeds for the main agents, final checkpoints, 500 evaluation episodes per run on identical episode seeds. Tier 2 unless stated.
-
-**Local drivers on the shared planner** (SR and collision in %, swept filter adds the timeout share):
-
-| Driver | SR, no filter | Collisions, no filter | SR, swept filter | Timeouts, swept filter |
-|---|---|---|---|---|
-| Mapless SAC-CARS (no planner) | 48.2 | 51.8 | 56.5 | 43.5 |
-| Stock social force | 6.0 | 0.2 | 6.4 | 93.6 |
-| Pure pursuit | 37.0 | 63.0 | 79.6 | 20.4 |
-| ORCA | 66.8 | 33.2 | 74.2 | 25.8 |
-| TD3-CARS | 65.0 | 32.0 | 67.2 | 32.8 |
-| PPO-CARS (library defaults) | 0.0 | 56.9 | 0.0 | 100.0 |
-| SAC-CARS | 80.4 | 19.6 | 95.4 | 4.6 |
-| SAC-blind (culture-blind) | 84.2 | 15.8 | 96.1 | 3.9 |
-| Tuned social force | 95.4 | 4.6 | 97.8 | 2.2 |
-| **Residual SAC on tuned social force** | 94.0 | 6.0 | **99.4** | 0.6 |
-
-![What each level adds](docs/figures/fig_layers.png)
-
-**Ablation, one change at a time** (SAC-CARS with `kappa = 3` and the swept filter, Tier 2):
-
-| Change | SR | Collisions | CVR_STAT |
-|---|---|---|---|
-| None (full stack) | 95.4 | 0.0 | 0.002 |
-| No planner | 56.5 | 0.04 | 0.231 |
-| No filter | 80.4 | 19.6 | 0.001 |
-| Cone filter instead of swept | 90.4 | 6.0 | 0.002 |
-| Geometric planner (`kappa = 0`) | 95.4 | 0.0 | 0.080 |
-| Culture-blind reward | 93.9 | 0.0 | 0.005 |
-| Learned reward weights | 94.8 | 0.0 | 0.002 |
-| Tuned social-force driver | 97.8 | 0.0 | 0.000 |
-| Residual driver | 99.4 | 0.0 | 0.000 |
-
-What the results show:
-
-* **Routing is the main obstacle.** The planner lifts SAC-CARS from 48.2% to 80.4% (2,500 paired episodes, exact McNemar p = 1.2e-142). The gain is 32.2 points on the walled tier and 12.3 on the open tier.
-* **Compliance follows the planner's price, not the reward.** On the STAT task the violation rate is 0.001 to 0.003 with the cultural planner and 0.080 to 0.081 with a geometric one, under either reward.
-* **Swept geometry decides contact.** With the swept filter, planner-guided drivers that navigate made no contact in 42,500 episodes. PPO-CARS, which never reached a goal, made one contact in 2,500. The forward-cone filter leaves 4.1 to 6.6% collisions.
-* **Learned and classical control are complementary.** The tuned social-force driver beats every pure learned driver in the benchmark, and the residual policy on top of it is the strongest driver measured.
-* **The approach has a clear boundary.** A crowd that does not give way costs every driver 30 to 40 points, with or without the filter.
-
-**Gazebo study** (gz-sim Harmonic, ROS 2 Jazzy, URDF model of the simulated ASMR, LiDAR people tracker, 2 wards x 8 or 45 walkers x 6 drivers x stall recovery on or off x 10 pedestrian seeds):
-
-![Gazebo goal-reached rates](docs/figures/fig_gzsuccess.png)
-
-* With stall recovery, 226 of 240 runs reached the goal. Without it, 151 of 240 did.
-* **Route choices transfer.** Culture-aware drivers entered the prayer room to a median depth of 0.45 to 0.62 m, while culture-blind drivers crossed it at 3.98 m (Fisher p = 5.3e-44). The cultural route still skims the room's edge, so a buffer price is needed.
-* **The driver ranking does not transfer.** In the walled ward with 45 walkers, SAC-CARS reached the goal in 10 of 10 runs, the residual driver in 7 of 10 and the tuned social-force driver in 4 of 10.
-
-![Prayer-room crossing in Gazebo](docs/figures/fig_gzprayer.png)
-
-**Real-world feasibility trials on the in-house-built ASMR.** We had no hospital service robot, so our laboratory's in-house-built ASMR platform stood in for one. The simulation-trained residual policy ran with unchanged weights in an apartment-like indoor environment with designated rooms, from a nurse station to an emergency-room goal (10.53 m route, 0.45 m/s cap, 2 to 11 walking people).
-
-* The robot reached the goal in 8 of 9 single trials, 6 of them without help.
-* Five components the benchmark does not contain were added one at a time, each after an observed failure. With all five in place, the robot arrived unaided in each of its 3 trials.
-* These are single runs on one day and one route with a changing configuration. No zone map was loaded and people were not tracked, so the trials show feasibility only. They give no success rate, no prayer-room result and no contact measure. The logs are in [`real_robot/`](real_robot/).
-
-## Quick start
-
-### Install
+**1. Install** (Python 3.10 or newer; a GPU is not needed).
 
 ```bash
-git clone https://github.com/Basar-mte/RL-on-Medical-Service-Robot-for-LMIC-Environment.git
-cd RL-on-Medical-Service-Robot-for-LMIC-Environment
+git clone https://github.com/Basar-mte/HospitalNav-v1.git
+cd HospitalNav-v1
 python -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-The campaign was run with Python 3.12, PyTorch 2.11, Stable-Baselines3 2.9, and Gymnasium 1.3.
-
-### Check the environment
+**2. Check that everything works.**
 
 ```bash
-pytest tests/test_env.py -v
-python scripts/play.py --density medium     # drive the robot with the arrow keys
+pytest tests/
 ```
 
-### Train one agent with the paper's recipe
-
-The final recipe turns reward normalisation off, uses a replay buffer of one million, a learning rate of 1e-4, and one environment per run. The planner is switched on with environment variables.
+**3. Test a trained model** that ships with this repository (SAC-CARS, Tier 2, with the swept-path filter, 20 episodes).
 
 ```bash
-export PILOT_NORM_REWARD=0
-export PLANNER_MODE=cult PLANNER_RATIO=3.0 PLANNER_L=2.5 PLANNER_DIST=geo PLANNER_PROGRESS=1 PLANNER_LOS=1
-python experiments/stability_pilot/patch_sac.py train/train_sac.py \
-    --config configs/hospital_v4.yaml --agent fixed_equal --seed 0 --timesteps 2000000 \
-    --buffer_size 1000000 --learning_rate 1e-4 --n_envs 1 --device cpu \
-    --no_camera --no_check_env --log_dir runs_v5/tier2/fixed_equal_s0
+python evaluation/evaluate_run.py --model ros2/models/fixed_equal_s2 --driver sac_cars --tier 2 --filter swept --episodes 20
 ```
 
-Use `PLANNER_MODE=geo` for the culture-blind agents (`--agent vanilla` or `he2025`) and leave the `PLANNER_*` variables unset for a mapless agent. The whole campaign, with every group, seed and evaluation, is driven by `scripts/campaign_v5_stable.py` and `scripts/eval_v5.py`. These two scripts were written for Windows and call `.venv\Scripts\python.exe`, so change the `PY` path on Linux.
-
-### Reproduce the paper's tables and numbers
+**4. Train your own driver** (a short test run first, then the full run of the paper).
 
 ```bash
-python scripts/build_paper_tables.py     # main, driver, compliance, robustness and Gazebo tables
-python scripts/audit_paper_numbers.py    # checks the headline numbers against runs_v5/results
+python training/train.py --driver sac_cars --tier 2 --seed 0 --steps 5000     # a few minutes
+python training/train.py --driver sac_cars --tier 2 --seed 0                   # 2 million steps, about a day on one CPU core
+python evaluation/evaluate_run.py --model runs/tier2/fixed_equal_s0 --driver sac_cars --tier 2 --filter all
 ```
 
-### Run the stack in Gazebo and ROS 2
+**5. Rebuild the paper's tables** from the saved results (no training needed, takes seconds).
 
-See [`ros_sim/README.md`](ros_sim/README.md). It covers the ROS 2 Humble (Gazebo Classic) quick start, the gz-sim Harmonic and ROS 2 Jazzy setup used for the paper, every launch argument, the worlds, the pedestrian plugin, and how to repeat the 480-run campaign.
+```bash
+python paper/build_paper_tables.py
+python paper/audit_paper_numbers.py
+```
 
-## Trained models
+---
 
-`ros_sim/models/` holds the best seed of every trained agent of both tiers (19 models), each with its own `vec_normalize.pkl`. Always keep a model with its own normaliser. The table in [`ros_sim/README.md`](ros_sim/README.md) gives the launch arguments for each model, and `ros_sim/MANIFEST.json` gives file hashes and benchmark scores.
+## Find what you need
 
-## Data in this repository
-
-* `runs_v5/results/`: aggregated results of the final campaign (`table.json`, `per_task.json`, `per_seed.json` per group), classical drivers, robustness suite, collision anatomy and speed-cap tests, with per-episode records.
-* `runs_v5/<group>/<run>/eval_final.json`, `eval_shield.json`, `eval_shield2.json`: the per-episode records of every run without a filter, with the cone filter and with the swept filter (500 episodes each).
-* `experiments/planner/results/`: the evaluation-only screen that fixed the planner settings.
-* `ros_sim/paper_data/`: all numbers of the Gazebo study as CSV (one row per run, per-configuration statistics, the robot's 10 Hz logs, routes, seeds, crowd statistics, scan-invariance checks, model parameters). See `ros_sim/paper_data/DATA_README.md`.
-* `ros_sim/results_summary/`: the Gazebo campaign and repeated-campaign reports.
-* `real_robot/`: the nine real-world feasibility trials on the in-house-built ASMR, one row per trial and the 5 Hz run logs. See `real_robot/README.md`.
-
-Not included because of size: the checkpoints and replay buffers of all 96 training runs, the per-run pedestrian logs of the Gazebo study (0.6 GB), the raw Gazebo run folders, renders and videos (about 5 GB). They are available from the authors on request.
+| I want to ... | Read | Main code |
+|---|---|---|
+| install and check the setup | [docs/01_install.md](docs/01_install.md) | `tests/` |
+| understand the benchmark (floors, people, robot, tasks, metrics) | [docs/02_benchmark.md](docs/02_benchmark.md) | `envs/`, `configs/` |
+| understand the planner, drivers and safety filter | [docs/03_navigation_stack.md](docs/03_navigation_stack.md) | `navstack/`, `baselines/`, `rewards/` |
+| train a driver, or the whole campaign | [docs/04_training.md](docs/04_training.md) | `training/`, `campaign/` |
+| test a model | [docs/05_evaluation.md](docs/05_evaluation.md) | `evaluation/` |
+| run the ablations and robustness tests | [docs/06_ablations.md](docs/06_ablations.md) | `ablations/` |
+| rebuild every table and check every number of the paper | [docs/07_reproduce_the_paper.md](docs/07_reproduce_the_paper.md) | `paper/`, `results/` |
+| run the stack in Gazebo with ROS 2 | [ros2/README.md](ros2/README.md) | `ros2/` |
+| run the stack on a real robot | [real_robot/README.md](real_robot/README.md) | `ros2/`, `real_robot/` |
+| look up a name or an abbreviation | [docs/glossary.md](docs/glossary.md) | |
 
 ## Repository layout
 
 ```
-configs/                 floor plans of both tiers (YAML)
-envs/                    the Gymnasium environment, floor plan and pedestrian model
-rewards/                 CARS reward terms, context weight network, REINFORCE trainer
-train/                   SAC training script and callbacks
-eval/                    evaluation, aggregation and shielded evaluation
-baselines/               classical baselines, risk-field reward, attention weighter, cone filter
-experiments/planner/     route planner, swept-path filter, residual driver, ORCA, robustness suite
-experiments/             earlier and side experiments (stability pilots, TD3, PPO, shield weaning, density, holonomic)
-scripts/                 campaign orchestration, classical evaluation, paper tables and audits
-runs_v5/results/         aggregated results of the final campaign
-ros_sim/                 ROS 2 package, Gazebo plugins and worlds, trained models, Gazebo data
-real_robot/              logs of the nine feasibility trials on the in-house-built ASMR
-deploy/                  ASMR deployment guide, older ROS 2 stack, Isaac Sim tools
-stakeholder_validation/  questionnaire for hospital stakeholders
-docs/                    stakeholder protocol, simulation changelog, README figures
-tests/                   environment smoke tests
+configs/       the two hospital floors (YAML), and floors with extra unmapped obstacles
+envs/          the Gymnasium environment: floor plan, crowd model, robot, sensors, metrics
+rewards/       the CARS reward (culture-aware reward shaping)
+navstack/      the method: route planner, swept-path safety filter, residual driver
+baselines/     comparison methods: classical controllers, ORCA, risk-field reward, cone filter
+training/      train one driver (train.py) and the trainers it uses (SAC, TD3, PPO)
+evaluation/    test one model (evaluate_run.py), a campaign group, or the classical drivers
+ablations/     the planner screen and the robustness tests
+campaign/      the script that ran all 96 training runs, with its monitoring tools
+paper/         rebuild the paper's tables and check its numbers
+results/       the paper's results: per-episode records of every run and the summary tables
+ros2/          ROS 2 package, Gazebo worlds and plugins, the trained models, Gazebo data
+real_robot/    how to deploy on a real robot, and the logs of the nine trials
+tools/         small helpers: drive with the keyboard, check a floor plan, draw routes
+docs/          guides (start here), figures, and the stakeholder survey
+tests/         automatic checks (pytest)
+archive/       earlier experiments and old scripts, kept for transparency, not needed
 ```
+
+## Names used in the code
+
+The code and the result files use short ids. The paper uses longer names.
+
+| In the code | In the paper |
+|---|---|
+| `fixed_equal` | SAC-CARS |
+| `nav_heavy`, `safe_heavy` | SAC-CARS-nav, SAC-CARS-safe |
+| `cwn`, `attention` | SAC-CWN, SAC-Attn |
+| `vanilla` | SAC-blind |
+| `he2025` (also `risk_field`) | SAC-risk |
+| `residual_sf` | Residual |
+| `td3_equal`, `ppo_equal` | TD3-CARS, PPO-CARS |
+| `planner_sf2` | Tuned SF (social force) |
+| `shield` / `shield2` | cone filter / swept-path filter |
+| `cult` / `geo` | cultural planner (kappa = 3) / geometric planner (kappa = 0) |
+| `tier1` / `tier2` | Tier 1 open floor / Tier 2 walled ward |
+
+More in [docs/glossary.md](docs/glossary.md).
 
 ## Limitations
 
-* All benchmark evaluations use the medium crowd of 45 people, one floor plan per tier, and pedestrians that give way to the robot.
-* The physical trials used our small in-house-built ASMR in an apartment-like environment, not a hospital service robot in a ward. Testing a hospital-grade service robot in real hospital wards needs written permission from the hospital authorities, ethics approval, a stakeholder survey and funding.
-* The planner settings, `kappa = 3` included, were fixed on pilot policies with the protocol episode seeds.
-* The swept-path filter is tested, not proven.
-* The Gazebo study uses ground-truth localisation on a prebuilt map and one route, and the stall recovery is an intervention the benchmark does not have.
-* The physical robot has built a map while driven by hand, but it has not yet navigated on its own.
+* The benchmark uses one floor plan per tier, the medium crowd of 45 people in the main tests,
+  and people who step aside for the robot. A crowd that does not step aside is a hard case for
+  every driver (see the robustness tests).
+* The safety filter is tested, not proven. It checks commands, not what the motors do.
+* The planner settings (kappa = 3, look-ahead 2.5 m) were chosen with the same test episodes
+  that are used for evaluation, on policies trained before the main campaign.
+* The real-robot trials were single runs on one route, in an apartment set up as a small
+  hospital, with a setup that changed between trials. They show that the stack can run on a
+  robot. They do not give a success rate.
+* The cultural rules (prayer room, separate wards for men and women, family attendants) are
+  examples that we wrote. Hospital staff and other stakeholders have not yet checked them.
+  They live in the floor-plan files and one price, so a hospital can change them or replace
+  them with its own rules without retraining. See [docs/stakeholders/](docs/stakeholders/).
 
-## Cultural rules and stakeholder validation
+## Data that is not in this repository
 
-The cultural rules (a prayer room most sensitive at the five daily prayer times, separate male and female wards, family attendants at the bedside) are representative examples of context-dependent norms that a hospital may need a robot to respect. We wrote them ourselves, and stakeholders have not yet validated them. We model separate wards as such hospitals run them and take no position on the practice. All rules sit in one price table and one prayer timetable, so a hospital can inspect and change them, or replace them with its own norms, without retraining.
+Because of their size, these are not included and are available from the authors on request:
+the checkpoints and replay buffers of the 96 training runs, the raw Gazebo run folders,
+renders and videos (about 5 GB), and the per-run pedestrian logs of the Gazebo study.
 
-The next step is to deploy the stack on the in-house-built ASMR in real hospital wards, guided by the opinions of nurses and ward staff, doctors, administrators, imams and prayer-space caretakers, family attendants and patients, after ethics approval. A short questionnaire is ready in `stakeholder_validation/google_form.gs`, and the full protocol is in `docs/stakeholder_validation.md`.
+## Citation
 
-## Citation, license and third-party assets
+If you use this benchmark or the navigation stack, please cite the paper (see
+[CITATION.cff](CITATION.cff)):
 
-If you use this benchmark or the navigation stack, please cite it with the metadata in [`CITATION.cff`](CITATION.cff).
+> Md. Abul Basar Roky, Md. Musfiqur Rahman, Md. Asif Sardar, Subrata K. Sarker, Bing Yan and
+> Sajal K. Das. *A Hierarchical Price-and-Veto Framework for Culture-Aware Autonomous Navigation
+> of Service Robots in Crowded Hospitals: Benchmarking and Experimental Validation.* Preprint, 2026.
 
-The code is released under the [MIT License](LICENSE).
+## License
 
-Third-party assets:
+The code is released under the [MIT License](LICENSE). The hospital furniture and people models
+in `ros2/hospitalnav_deploy/meshes/fuel/` come from the Open Robotics collection on Gazebo Fuel
+(see `ATTRIBUTION.md` there). The robot vendor's CAD meshes used by the detailed robot model are
+not included (see `ros2/hospitalnav_deploy/meshes/acker/README.md`).
 
-* The hospital furniture and people models in `ros_sim/hospitalnav_deploy/meshes/fuel/` come from the Open Robotics collection on Gazebo Fuel. See `ATTRIBUTION.md` in that folder.
-* The vendor CAD meshes used by the detailed robot model (`urdf/mentorpi_real.urdf`) and the Isaac Sim robot are **not** included. To use them, copy the meshes into the `meshes/acker/` folders as explained in the `README.md` files there. The simplified ASMR model `urdf/hospitalnav_robot.urdf` needs no extra files.
+## Contact
 
-Contact: Md. Abul Basar Roky, Department of Mechatronics Engineering, Rajshahi University of Engineering & Technology, Bangladesh (m.a.basar.mte@gmail.com).
+Md. Abul Basar Roky, Department of Mechatronics Engineering, Rajshahi University of Engineering
+& Technology (m.a.basar.mte@gmail.com).

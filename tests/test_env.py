@@ -1,5 +1,5 @@
 """
-Smoke tests for LMICHospitalNav-v1.
+Smoke tests for HospitalNav-v1.
 
 Run:  pytest tests/test_env.py -v
 """
@@ -22,7 +22,7 @@ class TestFloorPlan:
     def setup_method(self):
         from envs.floorplan import load_floorplan
         self.fp = load_floorplan(
-            Path(__file__).parent.parent / "configs" / "dmch_hospital.yaml"
+            Path(__file__).parent.parent / "configs" / "tier1_open_floor.yaml"
         )
 
     def test_dimensions(self):
@@ -74,7 +74,7 @@ class TestPedestrianCrowd:
         from envs.floorplan import load_floorplan
         from envs.pedestrians import PedestrianCrowd
         fp = load_floorplan(
-            Path(__file__).parent.parent / "configs" / "dmch_hospital.yaml"
+            Path(__file__).parent.parent / "configs" / "tier1_open_floor.yaml"
         )
         rng = np.random.default_rng(0)
         self.crowd = PedestrianCrowd(fp, max_pedestrians=40, rng=rng)
@@ -108,10 +108,10 @@ class TestPedestrianCrowd:
 # Gymnasium environment
 # ---------------------------------------------------------------------------
 
-class TestLMICHospitalNavEnv:
+class TestHospitalNavEnv:
     def setup_method(self):
-        from envs.lmic_hospital_env import LMICHospitalNavEnv
-        self.env = LMICHospitalNavEnv(seed=42)
+        from envs.hospital_env import HospitalNavEnv
+        self.env = HospitalNavEnv(seed=42)
 
     def teardown_method(self):
         self.env.close()
@@ -156,7 +156,7 @@ class TestLMICHospitalNavEnv:
             assert (obs[key] <= subspace.high + 1e-5).all()
 
     def test_action_space(self):
-        from envs.lmic_hospital_env import MAX_STEER, MIN_LINEAR
+        from envs.hospital_env import MAX_STEER, MIN_LINEAR
         assert self.env.action_space.low[0] == pytest.approx(MIN_LINEAR)
         assert self.env.action_space.high[0] == pytest.approx(0.8)
         assert self.env.action_space.low[1] == pytest.approx(-MAX_STEER)
@@ -166,9 +166,9 @@ class TestLMICHospitalNavEnv:
     def test_no_camera_mode(self):
         """use_camera=False drops the camera key entirely (no render cost)
         and the env still resets/steps/check_env's cleanly."""
-        from envs.lmic_hospital_env import LMICHospitalNavEnv
+        from envs.hospital_env import HospitalNavEnv
         from stable_baselines3.common.env_checker import check_env
-        env = LMICHospitalNavEnv(seed=7, use_camera=False)
+        env = HospitalNavEnv(seed=7, use_camera=False)
         try:
             assert "camera" not in env.observation_space.spaces
             obs, _ = env.reset(seed=7)
@@ -183,7 +183,7 @@ class TestLMICHospitalNavEnv:
         """Ackermann kinematics: heading must not change when v=0, regardless
         of steering angle (unlike the old differential-drive model, which
         could pivot in place)."""
-        from envs.lmic_hospital_env import MAX_STEER
+        from envs.hospital_env import MAX_STEER
         self.env.reset(seed=0)
         h0 = self.env._robot_heading
         self.env.step(np.array([0.0, MAX_STEER], dtype=np.float32))
@@ -197,7 +197,7 @@ class TestLMICHospitalNavEnv:
             self._assert_obs_shapes(obs)
 
     def test_task_options(self):
-        from envs.lmic_hospital_env import TASK_IDS
+        from envs.hospital_env import TASK_IDS
         for task in TASK_IDS:
             obs, info = self.env.reset(seed=0, options={"task": task})
             assert info["task_id"] == task
@@ -220,8 +220,8 @@ class TestLMICHospitalNavEnv:
     def test_check_env(self):
         """Run SB3 check_env — must pass with no warnings."""
         from stable_baselines3.common.env_checker import check_env
-        from envs.lmic_hospital_env import LMICHospitalNavEnv
-        fresh_env = LMICHospitalNavEnv(seed=0)
+        from envs.hospital_env import HospitalNavEnv
+        fresh_env = HospitalNavEnv(seed=0)
         check_env(fresh_env, warn=True, skip_render_check=True)
         fresh_env.close()
 
@@ -267,7 +267,7 @@ class TestCulturalReward:
     def setup_method(self):
         from envs.floorplan import load_floorplan
         self.fp = load_floorplan(
-            Path(__file__).parent.parent / "configs" / "dmch_hospital.yaml"
+            Path(__file__).parent.parent / "configs" / "tier1_open_floor.yaml"
         )
 
     def test_prayer_avoidance(self):
@@ -336,8 +336,8 @@ class TestCWN:
 
     def test_context_dim_matches_env(self):
         from rewards.cwn import CONTEXT_DIM
-        from envs.lmic_hospital_env import LMICHospitalNavEnv
-        env = LMICHospitalNavEnv(use_camera=False)
+        from envs.hospital_env import HospitalNavEnv
+        env = HospitalNavEnv(use_camera=False)
         try:
             assert env.observation_space["context"].shape == (CONTEXT_DIM,)
         finally:
